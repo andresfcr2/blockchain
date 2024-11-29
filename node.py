@@ -66,7 +66,7 @@ def register_nodes():
 
     response = {
         'message': 'Added more nodes to the network',
-        'list_of_nodes': list(self.nodes)
+        'list_of_nodes': list(nodes)
     }
     
     return jsonify(response), 201
