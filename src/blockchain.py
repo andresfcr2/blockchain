@@ -17,10 +17,7 @@ class Blockchain:
         """ Initialize the blockchain """
         self.chain = []
         self.current_transactions = []
-        self.nodes = set()      #To maintain a set of nodes in the distributed network
-        #Creating the genesis block
-        genesis_block = self._create_block(proof=100, previous_hash=1, index=1)
-        self.chain.append(genesis_block)
+        self.nodes = set()
 
 
     def register_node(self, address):
