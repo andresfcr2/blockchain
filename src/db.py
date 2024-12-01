@@ -1,26 +1,27 @@
-from pymongo import MongoClient
+from  pymongo import MongoClient
+import json
+from bson import json_util
 
-try:
-    client = MongoClient('localhost', 27017)
-
-    database = client['Blockchain']
-
-    collection = database['Certificates']
-
-    documents = collection.find()
+class MongoDB: 
+    def __init__(self):
+        self._conn = MongoClient('mongo', 27017)
+        self._db   = self._conn['Blockchain']
+        self.collection = self._db['Certificates']
+        
+        
+    def getAll(self):
+        return self.parse_json(self.collection.find())
     
     
-    documento = {"nombre": "Juan", "edad": 30, "ciudad": "Bogotá"}
-    result = collection.insert_one(documento)
-
-    ultimo_documento = collection.find_one(sort=[("_id", -1)]) 
-    print({"ultimo_documento": ultimo_documento})
-
-    for document in documents:
-        print(document)
-
-except Exception as ex:
-    print("Error durante la conexión: {}".format(ex))
-finally:
-    client.close()
-    print("Conexión finalizada.")
+    def insert(self, document):
+        result = self.collection.insert_one(document)
+        return result.inserted_id.__str__()
+    
+    
+    @staticmethod
+    def parse_json(data):
+        return json.loads(json_util.dumps(data))
+        
+if __name__ == '__main__':
+    database   = MongoDB("Hello")
+    collection = database.createCollection("MyTable")

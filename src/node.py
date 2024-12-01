@@ -1,108 +1,107 @@
-""" 
-    This module has the code for the blockchain node
-    It's made using Flask, which is a web framework for python
-"""
-
-
-import hashlib
-import json
-
 from flask import Flask, jsonify, request
 from uuid import uuid4
-
-from blockchain import Blockchain
+from db import MongoDB
+from datetime import datetime
+import hashlib, json
+from flask.json import JSONEncoder
+from bson import json_util
 
 
 app = Flask(__name__)
+mongodb = MongoDB()
 
-node_identifier = str(uuid4()).replace('-', '')
-
-blockchain = Blockchain()
-
-
-@app.route('/mine', methods=['GET'])
-def mine():
-    """ This function is used to mine the block with current transactions"""
-    last_block = blockchain.get_last_block
-    print(last_block)
-    last_proof = last_block['proof']
-    proof = blockchain.proof_of_work(last_proof)
-
-    blockchain.add_transaction(sender=0, recipient=node_identifier, amount=1)
-    block = blockchain.add_block(proof)
-    block['message'] = 'New block added'
-
-    return jsonify(block), 200
+@app.route('/hw', methods=['GET'])
+def hw():
+    return 'Hola Mundo', 200
 
 
-@app.route('/transactions/new', methods=['POST'])
+@app.route('/', methods=['POST'])
 def new_transaction():
-    """ This function is used to add a transaction to the current transactions list"""
-
-    data = request.get_json()
-
-    if not data:
-        return "No transation data passed", 400
-
-    required = ['sender', 'recipient', 'amount']
-
-    if not (list(data.keys()) == required):
-        return 'Missing Value', 400
-    
-    block_index = blockchain.add_transaction(data['sender'], data['recipient'], data['amount'])
-    response = {'message':f'Adding the transaction to block at index: {block_index}'}
-
-    return jsonify(response), 201
-
-
-@app.route('/nodes/register', methods=['POST'])
-def register_nodes():
-    nodes = request.get_json().get('nodes')
-    if nodes is None:
-        return " Need valid nodes to register", 400
-
-    for node in nodes:
-        blockchain.register_node(node)
-
-    response = {
-        'message': 'Added more nodes to the network',
-        'list_of_nodes': list(nodes)
-    }
-    
-    return jsonify(response), 201
-
-
-@app.route('/nodes/resolve', methods=['GET'])
-def consensus():
-    replaced = blockchain.resolve_conflicts()
-
-    if replaced:
-        response = {
-            'message': 'This chain was replaced by another chain',
-            'new_chain': blockchain.chain
-        }
+    try:
+        if 'file' not in request.files:
+            return jsonify({"success": False, "error": "No file part in the request"}), 400
         
-        return jsonify(response), 201
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"success": False, "error": "No file selected"}), 400
+        
+        data = request.form.get('data')
+        if not data:
+            return jsonify({"success": False, "error": "No transation data passed"}), 400
+        
 
-    else:
+        data = json.loads(data)
+        required = [
+            "issuer",
+            "recipient",
+            "validity_period",
+            "status",
+            "metadata",
+        ]
+        
+        missing = [x for x in required if x not in list(data.keys()) ]
+        if len(missing) > 0:
+            return jsonify({"success": False, "error": f"Missing data: {', '.join(missing)}"}), 400
+        
+        
+        certificate_id = uuid4()
+        hex = certificate_id.hex
+        certificate_id = certificate_id.__str__()
+        
+            
+        filename = f"{hex}.{file.filename.rsplit('.', 1)[-1]}"
+        file.save(f"../uploads/{filename}")
+        
+        
+        file_hash = calculate_file_hash(file)
+    
+        
+        payload = data.copy()
+        payload["certificate_id"] = certificate_id
+        payload["document_hash"] = file_hash
+        payload["timestamp"] = datetime.now(),
+        # payload["transaction_id"] = file_hash,
+        payload["status"] = "ACTIVE"
+        
+        
+        id = mongodb.insert(payload)
         response = {
-            'message': 'This chain was not replaced',
-            'chain': blockchain.chain
+            "success": True,
+            "mongoId": id,
+            "certificate_id": certificate_id,
         }
 
-        return jsonify(response), 200
+        return jsonify(response), 201
+    except Exception as e:
+        print(e)
+        return jsonify({"success": False, "error":f'An error ocurred while processing request: {e}'}), 201
+        
     
-    
-@app.route('/chain', methods=['GET'])
+@app.route('/', methods=['GET'])
 def get_chain():
-    """ This function is used to get the chain data """
+
+    document = mongodb.getAll()
     response = {
-        'chain': blockchain.chain,
-        'length':len(blockchain.chain)
+        'length':len(document),
+        'chain': document
     }
 
     return jsonify(response), 200
 
 
+def calculate_file_hash(file):
+    hash_func = hashlib.new('sha256')
+    
+    for chunk in iter(lambda: file.read(4096), b""):
+        hash_func.update(chunk)
+    
+    return hash_func.hexdigest()
+
+class CustomJSONEncoder(JSONEncoder):
+    def default(self, obj): return json_util.default(obj)
+app.json_encoder = CustomJSONEncoder
+
 if __name__=='__main__':
     app.run(host='0.0.0.0', port=5000)
+    # from waitress import serve
+    # serve(app, host="0.0.0.0", port=8080)

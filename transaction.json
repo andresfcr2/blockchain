@@ -1,0 +1,17 @@
+{
+  "certificate_id": "uuid4",
+  "issuer": "COMPAÑÍA - string",
+  "recipient": "TITULAR - string",
+  "document_hash": "HASH",
+  "timestamp": "datetime",
+  "validity_period": {
+    "start_date": "date",
+    "end_date": "date"
+  },
+  "transaction_id": "HASH",
+  "status": "ACTIVE || REVOKED || EXPIRED",
+  "metadata": {
+    "course_name": "string",
+    "score": "string"
+  }
+}
