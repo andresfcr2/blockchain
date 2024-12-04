@@ -12,7 +12,7 @@ mongodb = MongoDB()
 
 @app.route('/hw', methods=['GET'])
 def hw():
-    return 'Hola Mundo', 200
+    return 'It works!!!', 200
 
 
 @app.route('/', methods=['POST'])
@@ -54,13 +54,18 @@ def new_transaction():
         
         
         file_hash = calculate_file_hash(file)
+        
+    
+        last = mongodb.getLastOne()
+        
+        print({"last": last})
     
         
         payload = data.copy()
         payload["certificate_id"] = certificate_id
         payload["document_hash"] = file_hash
-        payload["timestamp"] = datetime.now(),
-        # payload["transaction_id"] = file_hash,
+        payload["timestamp"] = str(datetime.now())
+        payload["previous_hash"] = last['document_hash']
         payload["status"] = "ACTIVE"
         
         
@@ -87,6 +92,12 @@ def get_chain():
     }
 
     return jsonify(response), 200
+
+
+@app.route('/last', methods=['GET'])
+def getLastRecord():
+    return jsonify(mongodb.getLastOne()), 200
+
 
 
 def calculate_file_hash(file):

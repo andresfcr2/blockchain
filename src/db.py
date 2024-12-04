@@ -8,14 +8,16 @@ class MongoDB:
         self._db   = self._conn['Blockchain']
         self.collection = self._db['Certificates']
         
-        
     def getAll(self):
         return self.parse_json(self.collection.find())
-    
     
     def insert(self, document):
         result = self.collection.insert_one(document)
         return result.inserted_id.__str__()
+    
+    def getLastOne(self):
+        result = self.collection.find_one(sort=[("timestamp", -1)]) 
+        return self.parse_json(result)
     
     
     @staticmethod
